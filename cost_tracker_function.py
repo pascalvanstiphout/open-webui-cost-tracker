@@ -34,7 +34,8 @@ class Config:
     DATA_DIR = "data"
     CACHE_DIR = os.path.join(DATA_DIR, ".cache")
     USER_COST_FILE = os.path.join(
-        DATA_DIR, f"costs-{datetime.now().year:04d}-{datetime.now().month:02d}.json"
+        DATA_DIR,
+        f"costs-{datetime.now().year:04d}-{datetime.now().month:02d}.json"
     )
     CACHE_TTL = 432000  # try to keep model pricing json file for 5 days in the cache.
     CACHE_MAXSIZE = 16
@@ -78,33 +79,33 @@ class UserCostManager:
             json.dump(costs, cost_file, indent=4)
 
     def update_user_cost(
-        self,
-        user_email: str,
-        model: str,
-        input_tokens: int,
-        output_tokens: int,
-        total_cost: Decimal,
-    ):
-        costs = self._read_costs()
-        timestamp = datetime.now().isoformat()
+            self,
+            user_email: str,
+            model: str,
+            input_tokens: int,
+            output_tokens: int,
+            total_cost: Decimal,
+        ):
+            costs = self._read_costs()
+            timestamp = datetime.now().isoformat()
 
-        # Ensure costs is a list
-        if not isinstance(costs, list):
-            costs = []
+            # Ensure costs is a list
+            if not isinstance(costs, list):
+                costs = []
 
-        # Add new usage record directly to list
-        costs.append(
-            {
-                "user": user_email,
-                "model": model,
-                "timestamp": timestamp,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_cost": str(total_cost),
-            }
-        )
+            # Add new usage record directly to list
+            costs.append(
+                {
+                    "user": user_email,
+                    "model": model,
+                    "timestamp": timestamp,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_cost": str(total_cost),
+                }
+            )
 
-        self._write_costs(costs)
+            self._write_costs(costs)
 
 
 class ModelCostManager:
@@ -257,9 +258,7 @@ class ModelCostManager:
 
         # Final fallback: try fuzz.partial_ratio
         start = time.time()
-        partial_ratios = [
-            (fuzz.partial_ratio(key, query_lower), key) for key in keys_lower
-        ]
+        partial_ratios = [(fuzz.partial_ratio(key, query_lower), key) for key in keys_lower]
         best_ratio, best_key = max(partial_ratios, key=lambda x: x[0])
         end = time.time()
         if Config.DEBUG:
@@ -364,7 +363,12 @@ class Filter:
         Returns:
             str: sanitized model name
         """
-        prefixes = ["openai/", "github/", "google_genai/", "deepseek/"]
+        prefixes = [
+            "openai/",
+            "github/",
+            "google_genai/",
+            "deepseek/"
+        ]
         suffixes = ["-tuned"]
         # remove prefixes and suffixes
         for prefix in prefixes:
@@ -390,19 +394,12 @@ class Filter:
 
     def _get_model(self, body, model_obj=None):
         if model_obj and isinstance(model_obj, dict):
-            if (
-                "info" in model_obj
-                and isinstance(model_obj["info"], dict)
-                and "base_model_id" in model_obj["info"]
-            ):
-                base_model = self._sanitize_model_name(
-                    model_obj["info"]["base_model_id"]
-                )
-                return base_model
+            if "info" in model_obj and isinstance(model_obj["info"], dict):
+                if "base_model_id" in model_obj["info"] and model_obj["info"]["base_model_id"] is not None:
+                    return self._sanitize_model_name(model_obj["info"]["base_model_id"])
 
         if "model" in body:
-            model_id = self._sanitize_model_name(body["model"])
-            return model_id
+            return self._sanitize_model_name(body["model"])
         return None
 
     async def inlet(
@@ -467,11 +464,7 @@ class Filter:
             }
         )
 
-        model_obj = (
-            __model__
-            if __model__
-            else self.model_info if hasattr(self, "model_info") else None
-        )
+        model_obj = __model__ if __model__ else self.model_info if hasattr(self, "model_info") else None
         model = self._get_model(body, model_obj)
 
         enc = tiktoken.get_encoding("cl100k_base")
